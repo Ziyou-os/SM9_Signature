@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Sig_System</string>
+    <string name="app_name_CN">数字签名协同生成系统</string>
+</resources>
