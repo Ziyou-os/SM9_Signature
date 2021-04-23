@@ -22,7 +22,7 @@ public class SM9Curve {
     CurveField G1; //G1 group
     CurveField G2; //G2 group
     GTFiniteField GT; //GT group
-    SM9Pairing sm9Pairing; //SM9 Rate pairing
+    public  SM9Pairing sm9Pairing; //SM9 Rate pairing
     CurveElement P1; //base point P1 for G1 group
     CurveElement P2; //base point P2 for G2 group
 

@@ -1,6 +1,9 @@
 package com.encryption.gm.sm9;
 
+import android.os.Build;
 import android.util.Log;
+
+import androidx.annotation.RequiresApi;
 
 import com.encryption.utils.Hex;
 import com.example.sig_system.MainActivity;
@@ -8,6 +11,7 @@ import com.example.sig_system.MainActivity;
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import java.util.Base64;
 
 import it.unisa.dia.gas.jpbc.Element;
 import it.unisa.dia.gas.plaf.jpbc.field.curve.CurveElement;
@@ -26,90 +30,112 @@ public class SM9 {
         mCurve = curve;
     }
 
+
+
     public SM9Curve getCurve() {
         return mCurve;
     }
 
+    public CurveElement getP_A() { return P_A; }
+
+    public BigInteger getC1() {
+        return c1;
+    }
+
+    public Element getG_c() {
+        return g_c;
+    }
+
+    public BigInteger getH() {
+        return h;
+    }
+
+
+    public CurveElement getS_i() {
+        return s_i;
+    }
+
+    CurveElement P_A,s_i;
+    Element g_c;
+    BigInteger c1,c2;
+    BigInteger h,r_m;
+    SM9Curve sm9Curve = new SM9Curve();
 
     /**
      * SM9 sign_division.
      *
      * @param masterPublicKey signed master public key
      * @param privateKey signed private key
-     * @param data source data
-     * @return ResultSignatureDivision(h, s_i,s_m) value, including h, s_i and s_m.
+     *
+     *
      */
 
-    CurveElement s_i,s_m;
 
-    public ResultSignatureDivision sign_division(MasterPublicKey masterPublicKey, PrivateKey privateKey, byte[] data)
+    //用来得到一些参数，来第一次传给服务器；
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public void sign_division(MasterPublicKey masterPublicKey, PrivateKey privateKey)
     {
 
-        boolean l;
-        BigInteger h,tem,tem2;
+
+        c1 = SM9Utils.genRandom(mCurve.random, mCurve.N);
+        c2 = SM9Utils.genRandom(mCurve.random, mCurve.N);
 
 
-
-        BigInteger c1 = SM9Utils.genRandom(mCurve.random, mCurve.N);
-        BigInteger c2 = SM9Utils.genRandom(mCurve.random, mCurve.N);
 
         BigInteger cn=(c1.add(c2)).modInverse(mCurve.N).mod(mCurve.N);
 
 //        CurveElement P_A =  PrivateKey.d.duplicate().mul(cn);
-        CurveElement P_A =  privateKey.getD().duplicate().mul(cn);
+        P_A =  privateKey.getD().duplicate().mul(cn);
 
         //Step1 : g = e(P1, Ppub-s)
         Element g = mCurve.pairing(mCurve.P1, masterPublicKey.Q);
-        Element g_c = g.duplicate().pow(cn);
+        g_c = g.duplicate().pow(cn);
 
+    }
+
+
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public void sign_tem(String content, byte[] data)
+    {
+        boolean l;
         do {
-            //Step2: generate r
-            BigInteger r_i = SM9Utils.genRandom(mCurve.random, mCurve.N);
-            Element g_i = g_c.duplicate().pow(r_i);
-            BigInteger r_m = SM9Utils.genRandom(mCurve.random, mCurve.N);
+
+            byte [] byteArray = Base64.getDecoder().decode(content);
+            //g_i是乘法循环群中的元素，要用getGT
+            Element g_i = sm9Curve.sm9Pairing.getGT().newElementFromBytes(byteArray);
+//            Element g_i = g_c.duplicate().pow(r_i);
+            r_m = SM9Utils.genRandom(mCurve.random, mCurve.N);
             Element g_m = g_c.duplicate().pow(r_m);
 
             //Step3 : calculate w=g^r
-            Element w = g_i.duplicate().mul(g_m);
+            Element w = g_m.duplicate().mul(g_i);
 
             //Step4 : calculate h=H2(M||w,N)
-            h = SM9Utils.H2(data, w, mCurve.N);
+            h = SM9Utils.H2(data, w, mCurve.N).mod(mCurve.N);
 
             //step_add:check w whether equal with g^h
             l = w.isEqual(g_i.duplicate().mul(g_m).pow(h));
 
-            //Step5 : l=(r-h)mod N
-            tem = r_i.subtract(h.multiply(c1)).mod(mCurve.N);
-            tem2 = r_m.subtract(h.multiply(c2)).mod(mCurve.N);
-
         } while(l);
 
-        s_i = P_A.duplicate().mul(tem) ;
-        s_m = P_A.duplicate().mul(tem2) ;
-
-
-        return new ResultSignatureDivision(h, s_i,s_m);
-
-    }
-    //To set [s_i] to 0，but the function setToZero() do not work
-    public void s_itoZero(){
-//        s_i = s_i.duplicate().setToZero();
-        s_i = s_m;
     }
 
-    public ResultSignature sign(ResultSignatureDivision division,String content)
-    {
-        SM9Curve sm9Curve = new SM9Curve();
+    public ResultSignature sign_end(String S_i){
 
-        CurveElement hash_G_1 = (CurveElement) sm9Curve.sm9Pairing.getG1().newElementFromBytes(Hex.decode(content.replaceAll("\\s*", "")));
-        CurveElement s = hash_G_1.duplicate().add(division.s_m);
+        BigInteger tem2 = r_m.subtract(h.multiply(c2)).mod(mCurve.N);
+        Log.e("s_i_String",S_i);
+//         s_i = P_A.duplicate().mul(tem) ;
+        CurveElement s_i_new = (CurveElement) sm9Curve.sm9Pairing.getG1().newElementFromBytes(Hex.decode(S_i.replaceAll("\\s*", "")));
+        CurveElement s_m = P_A.duplicate().mul(tem2) ;
 
+
+//        CurveElement hash_G_1 = (CurveElement) sm9Curve.sm9Pairing.getG1().newElementFromBytes(Hex.decode(content.replaceAll("\\s*", "")));
+        CurveElement s = s_i_new.duplicate().add(s_m);
 
         //Step7 : signature=(h,s)
-        return new ResultSignature(division.h, s);
-
+        return new ResultSignature(h, s);
     }
-
     /**
      * SM9 verify.
      *

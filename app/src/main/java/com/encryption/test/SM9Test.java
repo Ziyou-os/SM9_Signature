@@ -1,5 +1,10 @@
 package com.encryption.test;
 
+import android.os.Build;
+import android.widget.TextView;
+
+import androidx.annotation.RequiresApi;
+
 import com.encryption.Main;
 import com.encryption.gm.sm9.KGC;
 import com.encryption.gm.sm9.MasterKeyPair;
@@ -9,6 +14,7 @@ import com.encryption.gm.sm9.ResultSignatureDivision;
 import com.encryption.gm.sm9.SM9;
 import com.encryption.gm.sm9.SM9Curve;
 import com.encryption.gm.sm9.ResultSignature;
+import com.example.sig_system.R;
 
 /**
  * SM9 test.
@@ -28,11 +34,16 @@ public final class SM9Test {
 
 
     MasterKeyPair signMasterKeyPair;
-    public ResultSignatureDivision test_sm9_division(KGC kgc, SM9 sm9) throws Exception {
+    String msg = "Chinese IBS standard";
+    String id_A = "Alice";
+
+
+
+
+    public void test_sm9_division(KGC kgc, SM9 sm9) throws Exception {
         Main.showMsg("\n----------------------------------------------------------------------\n");
         Main.showMsg("SM9签名测试\n");
 
-        String id_A = "Alice";
 
         //生成签名主密钥对
 
@@ -55,13 +66,13 @@ public final class SM9Test {
 
         //签名
         Main.showMsg("签名步骤中的相关值:");
-        String msg = "Chinese IBS standard";
+
         Main.showMsg("待签名消息 M:");
         Main.showMsg(msg);
 
-        ResultSignatureDivision division = sm9.sign_division(signMasterKeyPair.getPublicKey(), signPrivateKey, msg.getBytes());
-        Main.showMsg(division.toString());
-        return division;
+        sm9.sign_division(signMasterKeyPair.getPublicKey(), signPrivateKey);
+//        Main.showMsg(division.toString());
+//        return division;
     }
 
     /**
@@ -69,20 +80,27 @@ public final class SM9Test {
      *
      */
 
-    public void test_sm9_sign2(ResultSignatureDivision division, SM9 sm9,String content){
+//    public void test_sm9_sign2(String content){
+//        SM9 sm9 = new SM9(sm9Curve);
+//
+//        sm9.sign_tem(content, msg.getBytes());
+//
+//    }
 
-        String id_A = "Alice";
-        String msg = "Chinese IBS standard";
+    public String test_sm9_sign3(SM9 sm9,String content_h){
 
-        ResultSignature signature = sm9.sign(division,content);
+
+        ResultSignature signature = sm9.sign_end(content_h);
         Main.showMsg("消息M的签名为(h,s):");
         Main.showMsg(signature.toString());
 
         //验签
-        if (sm9.verify(signMasterKeyPair.getPublicKey(), id_A, msg.getBytes(), signature))
+        if (sm9.verify(signMasterKeyPair.getPublicKey(), id_A, msg.getBytes(), signature)) {
             Main.showMsg("verify OK");
+        }
         else
             Main.showMsg("verify failed");
-    }
+        return  signature.toString();
 
+    }
 }
