@@ -1,6 +1,7 @@
 # SM9_Signature
 毕设做的一个移动终端用的SM9数字签名协同生成系统，传统的数字签名通常是在客户端上完成，这里加入了服务端，实现协同交互生成数字签名的功能。
 ------
+master放的是客户端代码，master2放的是服务端的
 
 ![界面图](https://github.com/Ziyou-os/SM9_Signature/blob/master/View.jpg)
 
